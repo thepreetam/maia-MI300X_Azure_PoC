@@ -65,12 +65,13 @@ Despite higher power draw per unit, the significantly higher performance density
 
 | Quarter | Milestone | Cumulative Savings |
 |---------|-----------|-------------------|
-| Q3 2024 | Initial deployment (10%) | $5.5M |
-| Q4 2024 | Expanded deployment (25%) | $13.8M |
-| Q1 2025 | Half fleet converted (50%) | $27.5M |
-| Q2 2025 | 75% fleet converted | $41.3M |
-| Q3 2025 | Full deployment (100%) | $55M |
-| Q4 2025 | Optimization complete | $220M annualized |
+| Q3 2023 | Initial deployment (10%) | $5.5M |
+| Q4 2023 | Expanded deployment (25%) | $13.8M |
+| Q1 2024 | Half fleet converted (50%) | $27.5M |
+| Q2 2024 | 75% fleet converted | $41.3M |
+| Q3 2024 | Full deployment (100%) | $55M |
+| Q4 2024 | Optimization complete | $220M annualized |
+| Q1 2025 | Ongoing optimization and maintenance | $220M+ annualized |
 
 ## Risk Factors
 
