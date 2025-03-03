@@ -1,0 +1,121 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Username for the VM"
+      }
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "metadata": {
+        "description": "SSH public key for authentication"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_ND96amsr_v5",
+      "metadata": {
+        "description": "Azure MI300X instance type"
+      }
+    },
+    "region": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "Azure region"
+      }
+    }
+  },
+  "variables": {
+    "networkSettings": {
+      "vnetName": "maia-vnet",
+      "subnetName": "mi300x-subnet"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('networkSettings').vnetName]",
+      "location": "[parameters('region')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": ["10.0.0.0/16"]
+        },
+        "subnets": [
+          {
+            "name": "[variables('networkSettings').subnetName]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-03-01",
+      "name": "maia-mi300x-vm",
+      "location": "[parameters('region')]",
+      "dependsOn": ["[resourceId('Microsoft.Network/virtualNetworks', variables('networkSettings').vnetName)]"],
+      "properties": {
+        "hardwareProfile": { "vmSize": "[parameters('vmSize')]" },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'maia-nic')]"
+            }
+          ]
+        },
+        "osProfile": {
+          "computerName": "maia-mi300x",
+          "adminUsername": "[parameters('adminUsername')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "/home/[parameters('adminUsername')]/.ssh/authorized_keys",
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2023-03-01",
+      "name": "maia-mi300x-vm/benchmark",
+      "location": "[parameters('region')]",
+      "dependsOn": ["[resourceId('Microsoft.Compute/virtualMachines', 'maia-mi300x-vm')]"],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.1",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "script": "IyBJbnN0YWxsIEFNRCBST0NNIGFuZCBydW4gYmVuY2htYXJrcw0Kc3VkbyBhcHQtZ2V0IHVwZGF0ZSAtcXkNCnN1ZG8gYXB0LWdldCBpbnN0YWxsIC1xeSByb2NtLWtZX2FsbA0KZ2l0IGNsb25lIGh0dHBzOi8vZ2l0aHViLmNvbS90aGVwcmVldGFtL21haWFfZnJhY3RhbF9lZGdlX2VuY29kZXIuZ2l0DQpjZCBtYWlhX2ZyYWN0YWxfZWRnZV9lbmNvZGVyDQpweXRob24gYmVuY2htYXJrcy9sYXRlbmN5X3Rlc3QucHkgLS10YXJnZXQgMC41bXM="
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "publicIPAddress": {
+      "type": "string",
+      "value": "[reference('maia-nic').ipConfigurations[0].properties.publicIPAddress]"
+    }
+  }
+} 
