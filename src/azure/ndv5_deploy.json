@@ -5,81 +5,144 @@
     "adminUsername": {
       "type": "string",
       "metadata": {
-        "description": "Username for the VM"
+        "description": "Admin username for the VM"
       }
     },
     "sshPublicKey": {
       "type": "string",
       "metadata": {
-        "description": "SSH public key for authentication"
+        "description": "SSH public key for the VM"
       }
     },
     "vmSize": {
       "type": "string",
       "defaultValue": "Standard_ND96amsr_v5",
       "metadata": {
-        "description": "Azure MI300X instance type"
+        "description": "Azure MI350X instance type"
       }
     },
-    "region": {
+    "location": {
       "type": "string",
-      "defaultValue": "eastus",
+      "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Azure region"
+        "description": "Location for all resources"
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "mi350x-subnet",
+      "metadata": {
+        "description": "Subnet name"
       }
     }
   },
   "variables": {
-    "networkSettings": {
-      "vnetName": "maia-vnet",
-      "subnetName": "mi300x-subnet"
-    }
+    "vnetName": "maia-vnet",
+    "addressPrefix": "10.0.0.0/16",
+    "subnetPrefix": "10.0.1.0/24",
+    "publicIPAddressName": "maia-public-ip",
+    "networkInterfaceName": "maia-nic",
+    "networkSecurityGroupName": "maia-nsg"
   },
   "resources": [
     {
       "type": "Microsoft.Network/virtualNetworks",
-      "apiVersion": "2023-05-01",
-      "name": "[variables('networkSettings').vnetName]",
-      "location": "[parameters('region')]",
+      "name": "[variables('vnetName')]",
+      "apiVersion": "2020-05-01",
+      "location": "[parameters('location')]",
       "properties": {
         "addressSpace": {
-          "addressPrefixes": ["10.0.0.0/16"]
+          "addressPrefixes": [
+            "[variables('addressPrefix')]"
+          ]
         },
         "subnets": [
           {
-            "name": "[variables('networkSettings').subnetName]",
+            "name": "[parameters('subnetName')]",
             "properties": {
-              "addressPrefix": "10.0.0.0/24"
+              "addressPrefix": "[variables('subnetPrefix')]"
             }
           }
         ]
       }
     },
     {
-      "type": "Microsoft.Compute/virtualMachines",
-      "apiVersion": "2023-03-01",
-      "name": "maia-mi300x-vm",
-      "location": "[parameters('region')]",
-      "dependsOn": ["[resourceId('Microsoft.Network/virtualNetworks', variables('networkSettings').vnetName)]"],
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddressName')]",
+      "apiVersion": "2020-05-01",
+      "location": "[parameters('location')]",
       "properties": {
-        "hardwareProfile": { "vmSize": "[parameters('vmSize')]" },
-        "storageProfile": {
-          "imageReference": {
-            "publisher": "Canonical",
-            "offer": "UbuntuServer",
-            "sku": "18.04-LTS",
-            "version": "latest"
-          }
-        },
-        "networkProfile": {
-          "networkInterfaces": [
-            {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'maia-nic')]"
+        "publicIPAllocationMethod": "Dynamic",
+        "publicIPAddressVersion": "IPv4"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('networkSecurityGroupName')]",
+      "apiVersion": "2020-05-01",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "SSH",
+            "properties": {
+              "priority": 1000,
+              "protocol": "Tcp",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "22"
             }
-          ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('networkInterfaceName')]",
+      "apiVersion": "2020-05-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), parameters('subnetName'))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "maia-mi350x-vm",
+      "apiVersion": "2020-06-01",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
         },
         "osProfile": {
-          "computerName": "maia-mi300x",
+          "computerName": "maia-mi350x",
           "adminUsername": "[parameters('adminUsername')]",
           "linuxConfiguration": {
             "disablePasswordAuthentication": true,
@@ -92,30 +155,48 @@
               ]
             }
           }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+            }
+          ]
         }
       }
     },
     {
       "type": "Microsoft.Compute/virtualMachines/extensions",
-      "apiVersion": "2023-03-01",
-      "name": "maia-mi300x-vm/benchmark",
-      "location": "[parameters('region')]",
-      "dependsOn": ["[resourceId('Microsoft.Compute/virtualMachines', 'maia-mi300x-vm')]"],
+      "name": "maia-mi350x-vm/benchmark",
+      "apiVersion": "2020-06-01",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[resourceId('Microsoft.Compute/virtualMachines', 'maia-mi350x-vm')]"],
       "properties": {
         "publisher": "Microsoft.Azure.Extensions",
         "type": "CustomScript",
-        "typeHandlerVersion": "2.1",
+        "typeHandlerVersion": "2.0",
         "autoUpgradeMinorVersion": true,
         "settings": {
-          "script": "IyBJbnN0YWxsIEFNRCBST0NNIGFuZCBydW4gYmVuY2htYXJrcw0Kc3VkbyBhcHQtZ2V0IHVwZGF0ZSAtcXkNCnN1ZG8gYXB0LWdldCBpbnN0YWxsIC1xeSByb2NtLWtZX2FsbA0KZ2l0IGNsb25lIGh0dHBzOi8vZ2l0aHViLmNvbS90aGVwcmVldGFtL21haWFfZnJhY3RhbF9lZGdlX2VuY29kZXIuZ2l0DQpjZCBtYWlhX2ZyYWN0YWxfZWRnZV9lbmNvZGVyDQpweXRob24gYmVuY2htYXJrcy9sYXRlbmN5X3Rlc3QucHkgLS10YXJnZXQgMC41bXM="
+          "fileUris": [
+            "https://raw.githubusercontent.com/your-org/maia-mi350x-poc/main/src/azure/install_deps.sh"
+          ],
+          "commandToExecute": "bash install_deps.sh"
         }
       }
     }
-  ],
-  "outputs": {
-    "publicIPAddress": {
-      "type": "string",
-      "value": "[reference('maia-nic').ipConfigurations[0].properties.publicIPAddress]"
-    }
-  }
+  ]
 } 
