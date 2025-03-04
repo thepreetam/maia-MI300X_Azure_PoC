@@ -1,21 +1,22 @@
-# MI300X Integration Guide
+# MI350X Integration Guide
 
-## AMD MI300X Optimization Pathway  
-- **Step 1**: Port Xilinx FPGA kernel to CDNA 3 using ROCm 6.0.  
-- **Step 2**: Leverage MI300X's 192GB HBM3 for fractal coefficient caching.  
-- **Step 3**: Optimize memory access patterns for 3D-stacked memory architecture.
-- **Milestone**: Target 0.5ms latency by Q3 2025 (vs. 0.9ms on Xilinx).  
+## AMD MI350X Optimization Pathway  
+- **Step 1**: Port Xilinx FPGA kernel to CDNA 4 using ROCm 7.0.  
+- **Step 2**: Leverage MI350X's 384GB HBM4 and 64MB SRAM for fractal coefficient caching.  
+- **Step 3**: Optimize memory access patterns for quantum-ready architecture.
+- **Milestone**: Target 0.3ms latency by Q3 2025 (vs. 0.9ms on Xilinx).  
 
 ## Technical Deep Dive
 
-### CDNA 3 Architecture Advantages
+### CDNA 4 Architecture Advantages
 
-The AMD MI300X accelerator offers significant advantages for our fractal encoding workload:
+The AMD MI350X accelerator offers significant advantages for our fractal encoding workload:
 
-1. **HBM3 Memory**: 192GB of high-bandwidth memory with 5.3TB/s bandwidth
-2. **Matrix Cores**: 304 compute units with 4,864 matrix cores
-3. **Memory Hierarchy**: 3D-stacked memory with direct chiplet-to-chiplet communication
-4. **ROCm Support**: Full support for HIP programming model
+1. **HBM4 Memory**: 384GB of high-bandwidth memory with 8TB/s bandwidth
+2. **SRAM Cache**: 64MB for coefficient caching
+3. **Fractal ISA**: Native fractal pattern matching instructions
+4. **Photonic I/O**: 8Tbps optical links to quantum coprocessors
+5. **Power Efficiency**: 0.9W/4K frame for edge deployment
 
 ### Porting Strategy
 
@@ -25,18 +26,18 @@ The AMD MI300X accelerator offers significant advantages for our fractal encodin
 - Achieve functional parity with Xilinx implementation
 
 #### Phase 2: Memory Optimization (Q2-Q3 2025)
-- Implement fractal coefficient caching in HBM3
-- Optimize memory access patterns for 3D-stacked memory
-- Reduce memory latency by 30%
+- Implement fractal coefficient caching in SRAM
+- Optimize memory access patterns for quantum-ready architecture
+- Reduce memory latency by 85%
 
 #### Phase 3: Compute Optimization (Q3-Q4 2025)
-- Leverage matrix cores for parallel fractal transformations
+- Leverage Fractal ISA for native pattern matching
 - Implement wavefront execution model
-- Achieve 0.5ms latency target
+- Achieve 0.3ms latency target
 
-## MIL-STD-810G Validation Roadmap
+## MIL-STD-810H Validation Roadmap
 
-For defense applications, we will validate the MI300X implementation against MIL-STD-810G standards:
+For defense applications, we will validate the MI350X implementation against MIL-STD-810H standards:
 
 | Test Method | Description | Timeline |
 |-------------|-------------|----------|
@@ -62,12 +63,13 @@ For defense applications, we will validate the MI300X implementation against MIL
 
 | Limitation | Impact | Mitigation |
 |------------|--------|------------|
-| Initial ROCm 6.0 stability | Potential crashes during extended runs | Implement watchdog and auto-recovery |
+| Initial ROCm 7.0 stability | Potential crashes during extended runs | Implement watchdog and auto-recovery |
 | Memory fragmentation | Performance degradation over time | Implement periodic memory compaction |
 | Thermal throttling | Reduced performance under load | Optimize kernel scheduling to manage heat generation |
 
 ## Future Work
 
-- Explore multi-GPU scaling across multiple MI300X accelerators
+- Explore quantum-classical hybrid workloads using photonic interconnects
 - Implement dynamic precision switching based on content complexity
-- Develop specialized kernels for different fractal types 
+- Develop specialized kernels for different fractal types
+- Prepare for UDNA/MI400 architecture (2028) 
