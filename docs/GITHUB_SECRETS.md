@@ -1,75 +1,75 @@
-# GitHub Secrets Configuration for MI300X CI/CD
+# GitHub Secrets Configuration for MI350X CI/CD
 
-This document provides instructions for setting up the GitHub Secrets required for the MI300X CI/CD pipeline.
+## Overview
+
+This document provides instructions for setting up the GitHub Secrets required for the MI350X CI/CD pipeline.
 
 ## Required Secrets
 
-The CI/CD pipeline requires the following secrets to be configured in your GitHub repository:
+### Azure Service Principal
 
-1. **AZURE_CREDS**: JSON object containing Azure service principal credentials
-2. **AZURE_PASSWORD**: The service principal client secret
-
-## Setting Up Azure Service Principal
-
-Before configuring the GitHub Secrets, you need to create an Azure service principal with the appropriate permissions:
-
+1. Create an Azure service principal with Contributor role:
 ```bash
-az ad sp create-for-rbac --name "Maia-MI300X-Deploy" --role Contributor --scopes /subscriptions/<YOUR_SUB_ID>
+az ad sp create-for-rbac --name "Maia-MI350X-Deploy" --role Contributor --scopes /subscriptions/<YOUR_SUB_ID>
 ```
 
-This command will output JSON similar to:
-
+2. The command will output JSON like this:
 ```json
 {
   "appId": "<APP_ID>",
-  "displayName": "Maia-MI300X-Deploy",
+  "displayName": "Maia-MI350X-Deploy",
+  "name": "http://Maia-MI350X-Deploy",
   "password": "<PASSWORD>",
   "tenant": "<TENANT_ID>"
 }
 ```
 
-## Configuring GitHub Secrets
+3. Add these values to your GitHub repository secrets:
+   - `AZURE_CLIENT_ID`: The `appId` value
+   - `AZURE_CLIENT_SECRET`: The `password` value
+   - `AZURE_TENANT_ID`: The `tenant` value
+   - `AZURE_SUBSCRIPTION_ID`: Your Azure subscription ID
 
-1. Navigate to your GitHub repository
-2. Go to **Settings** → **Secrets and variables** → **Actions**
-3. Click on **New repository secret**
+### Resource Group
 
-### Secret 1: AZURE_CREDS
+1. Create a resource group for the deployment:
+```bash
+az group create --name "maia-mi350x-rg" --location "eastus"
+```
 
-- **Name**: `AZURE_CREDS`
-- **Value**:
-  ```json
-  {
-    "clientId": "<APP_ID>",
-    "clientSecret": "<PASSWORD>",
-    "subscriptionId": "<SUBSCRIPTION_ID>",
-    "tenantId": "<TENANT_ID>"
-  }
-  ```
+2. Add the resource group name to your GitHub repository secrets:
+   - `AZURE_RESOURCE_GROUP`: "maia-mi350x-rg"
 
-Replace the placeholders with the values from the service principal creation output:
-- `<APP_ID>` with the `appId` value
-- `<PASSWORD>` with the `password` value
-- `<TENANT_ID>` with the `tenant` value
-- `<SUBSCRIPTION_ID>` with your Azure subscription ID
+### Additional Configuration
 
-### Secret 2: AZURE_PASSWORD
+1. Set the deployment location:
+   - `AZURE_LOCATION`: "eastus"
 
-- **Name**: `AZURE_PASSWORD`
-- **Value**: `<PASSWORD>`
+2. Set the VM size:
+   - `AZURE_VM_SIZE`: "Standard_ND96amsr_v5"
 
-Use the same `password` value from the service principal creation output.
+## Usage in GitHub Actions
 
-## Verifying Configuration
+These secrets are used in the CI/CD workflow (`.github/workflows/mi350x-ci.yml`):
 
-After configuring the secrets, you can verify they are set up correctly by:
+```yaml
+- name: Azure Login
+  uses: azure/login@v1
+  with:
+    creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-1. Going to the **Actions** tab in your repository
-2. Running the CI/CD workflow manually
-3. Checking that the "Azure NDv5 Deployment Dry-Run" step completes successfully
+- name: Deploy ARM Template
+  run: |
+    az deployment group create \
+      --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+      --template-file src/azure/ndv5_deploy.json \
+      --parameters adminUsername=${{ secrets.AZURE_ADMIN_USERNAME }} \
+      --parameters sshPublicKey="${{ secrets.AZURE_SSH_PUBLIC_KEY }}"
+```
 
-## Security Considerations
+## Security Notes
 
-- The service principal credentials provide access to your Azure resources, so keep them secure
-- Consider setting an expiration date for the service principal
-- Use the principle of least privilege by limiting the scope of the service principal to only the resources needed 
+1. Never commit secrets to the repository
+2. Rotate service principal credentials regularly
+3. Use the principle of least privilege when assigning roles
+4. Monitor secret usage in GitHub Actions logs 

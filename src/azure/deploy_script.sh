@@ -1,14 +1,15 @@
 #!/bin/bash
-# Azure NDv5 MI300X Deployment Script
-# This script deploys the MI300X VM using the ARM template
+# Azure NDv5 MI350X Deployment Script
+# This script deploys the MI350X VM using the ARM template
 
 set -e
 
 # Default values
-RESOURCE_GROUP="maia-mi300x-rg"
+RESOURCE_GROUP="maia-mi350x-rg"
 LOCATION="eastus"
 VM_SIZE="Standard_ND96amsr_v5"
-ADMIN_USERNAME="maiaadmin"
+ADMIN_USERNAME="azureuser"
+SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -34,13 +35,19 @@ while [[ $# -gt 0 ]]; do
       shift
       shift
       ;;
+    --ssh-key|-k)
+      SSH_KEY_FILE="$2"
+      shift
+      shift
+      ;;
     --help|-h)
       echo "Usage: $0 [options]"
       echo "Options:"
-      echo "  --resource-group, -g    Resource group name (default: maia-mi300x-rg)"
+      echo "  --resource-group, -g    Resource group name (default: maia-mi350x-rg)"
       echo "  --location, -l          Azure region (default: eastus)"
       echo "  --vm-size, -s           VM size (default: Standard_ND96amsr_v5)"
-      echo "  --admin-username, -u    Admin username (default: maiaadmin)"
+      echo "  --admin-username, -u    Admin username (default: azureuser)"
+      echo "  --ssh-key, -k           SSH public key file (default: ~/.ssh/id_rsa.pub)"
       echo "  --help, -h              Show this help message"
       exit 0
       ;;
@@ -57,21 +64,19 @@ if ! az group show --name "$RESOURCE_GROUP" &>/dev/null; then
   az group create --name "$RESOURCE_GROUP" --location "$LOCATION"
 fi
 
-# Get SSH public key
-SSH_PUBLIC_KEY=$(cat ~/.ssh/id_rsa.pub)
-if [ -z "$SSH_PUBLIC_KEY" ]; then
-  echo "No SSH public key found at ~/.ssh/id_rsa.pub"
-  echo "Please generate an SSH key pair using: ssh-keygen -t rsa -b 4096"
+# Check if SSH key file exists
+if [ ! -f "$SSH_KEY_FILE" ]; then
+  echo "Error: SSH key file not found: $SSH_KEY_FILE"
   exit 1
 fi
 
 # Deploy the ARM template
-echo "Deploying MI300X VM to resource group $RESOURCE_GROUP..."
+echo "Deploying MI350X VM to resource group $RESOURCE_GROUP..."
 az deployment group create \
   --resource-group "$RESOURCE_GROUP" \
   --template-file "$(dirname "$0")/ndv5_deploy.json" \
   --parameters adminUsername="$ADMIN_USERNAME" \
-  --parameters sshPublicKey="$SSH_PUBLIC_KEY" \
+  --parameters sshPublicKey="$(cat $SSH_KEY_FILE)" \
   --parameters vmSize="$VM_SIZE" \
   --parameters region="$LOCATION"
 
@@ -83,6 +88,6 @@ PUBLIC_IP=$(az deployment group show \
   --query "properties.outputs.publicIPAddress.value" \
   --output tsv)
 
-echo "MI300X VM deployed successfully!"
+echo "MI350X VM deployed successfully!"
 echo "Connect using: ssh $ADMIN_USERNAME@$PUBLIC_IP"
 echo "Note: It may take a few minutes for the VM to be fully provisioned and accessible." 
